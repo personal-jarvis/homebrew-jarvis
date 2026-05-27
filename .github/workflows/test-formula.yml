@@ -37,7 +37,20 @@ jobs:
       - name: Set up Homebrew
         uses: Homebrew/actions/setup-homebrew@6eaeff80e7e5c43087c0e5eb5aa82120399e9c91
 
+      - name: Tap self (so `brew audit NAME` resolves the local checkout)
+        run: |
+          set -euo pipefail
+          # Use `brew tap personal-jarvis/jarvis <local-path>` so audit/style
+          # commands can address the formula by name (path arg is deprecated
+          # in Homebrew 4.x — see SA-5 fix-forward note below).
+          brew tap personal-jarvis/jarvis "${{ github.workspace }}"
+
       - name: Audit Formula (strict)
+        # NOTE (SA-5, 2026-05-27): `brew audit <path>` was deprecated in
+        # Homebrew 4.x and now errors with "Calling brew audit [path ...]
+        # is disabled! Use brew audit [name ...] instead." We tap the
+        # local checkout in the previous step, then audit by tap-qualified
+        # formula name.
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -47,8 +60,9 @@ jobs:
             exit 1
           fi
           for f in "${formulae[@]}"; do
-            echo "::group::brew audit --strict --online $f"
-            brew audit --strict --online "$f"
+            name=$(basename "$f" .rb)
+            echo "::group::brew audit --strict --online $name"
+            brew audit --strict --online "personal-jarvis/jarvis/$name"
             echo "::endgroup::"
           done
 
@@ -57,7 +71,8 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
           for f in Formula/*.rb; do
-            echo "::group::brew style $f"
-            brew style "$f"
+            name=$(basename "$f" .rb)
+            echo "::group::brew style $name"
+            brew style "personal-jarvis/jarvis/$name"
             echo "::endgroup::"
           done
