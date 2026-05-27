@@ -1,12 +1,12 @@
 class PersonalJarvisInstaller < Formula
   desc "Supply-chain hardened installer for Personal Jarvis (4 trust axes)"
   homepage "https://github.com/personal-jarvis/personal-jarvis"
-  url "https://github.com/personal-jarvis/personal-jarvis/releases/download/v0.5.0-supplychain-wave4/install-verify.sh"
-  version "0.5.0-supplychain-wave4"
-  sha256 "742746d9073382195728d730c31cd72aaf7316fdc81dbac9ed6f77eeb9376c52"
+  url "https://github.com/personal-jarvis/personal-jarvis/releases/download/v0.5.1-supplychain-wave5-audit-fixes/install-verify.sh"
+  version "0.5.1-supplychain-wave5-audit-fixes"
+  sha256 "4c9b076bffba48fa26d4ef07f3666d3400382d1e383537cc551733d43257ea73"
   license "MIT"
 
-  # PINNED to the v0.5.0-supplychain-wave4 release.
+  # PINNED to the v0.5.1-supplychain-wave5-audit-fixes release.
   #
   # The url points at a single release asset rather than the source
   # tarball, because the installer is a single executable shell script
@@ -16,14 +16,18 @@ class PersonalJarvisInstaller < Formula
   # package manager's signing chain is only meaningful if the pinned
   # artifact is immutable).
   #
-  # Wave-4 bump (SA-5, 2026-05-27):
-  # - Verifier is now 14 stages (0/13..13/13); stages 12-13 carry the
-  #   ML-DSA-65 PQ axis. Stage 13/13 cleanly skips when the host's
-  #   OpenSSL is older than 3.5 (transition mode) with an explicit
-  #   warning rather than a hard fail.
-  # - SHA256 is computed over the v0.5 install-verify.sh source at the
-  #   squash-merge commit on `main`; the signing workflow publishes
-  #   byte-identical content to the release asset.
+  # Wave-5 bump (audit fixes, 2026-05-27):
+  # - Tag-binding cross-check: stage [7/13] now extracts the
+  #   @refs/tags/<X> suffix from the cosign SAN cert and refuses if
+  #   it does not match \$TAG (closes downgrade-replay).
+  # - New axis E (payload-commit pin): install-verify fetches +
+  #   verifies payload-commit.txt (the tagged commit SHA), then
+  #   install.sh checks out --detach to that SHA before running.
+  #   Closes the cloned-main-is-unsigned gap.
+  # - in-toto layout renamed layout-content-anchor.json with honest
+  #   _type=content-anchor; docs no longer overclaim in-toto signing.
+  # - Verifier now spans 14 stages plus axis E; SHA256 above is taken
+  #   verbatim from the v0.5.1 release's checksums.txt.
 
   def install
     # The downloaded file is a single executable shell script (not an
