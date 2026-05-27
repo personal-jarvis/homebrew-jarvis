@@ -1,12 +1,12 @@
 class PersonalJarvisInstaller < Formula
-  desc "Supply-chain hardened installer for Personal Jarvis (4 trust axes)"
+  desc "Supply-chain hardened installer for Personal Jarvis (5 trust axes + Wave 6 pip hash-pin)"
   homepage "https://github.com/personal-jarvis/personal-jarvis"
-  url "https://github.com/personal-jarvis/personal-jarvis/releases/download/v0.5.1-supplychain-wave5-audit-fixes/install-verify.sh"
-  version "0.5.1-supplychain-wave5-audit-fixes"
-  sha256 "4c9b076bffba48fa26d4ef07f3666d3400382d1e383537cc551733d43257ea73"
+  url "https://github.com/personal-jarvis/personal-jarvis/releases/download/v0.6.0-supplychain-wave6/install-verify.sh"
+  version "0.6.0-supplychain-wave6"
+  sha256 "c9b867bdc95a2675501964ad3e562e2bd2ce22894aaedf1e8b8000517415c3ce"
   license "MIT"
 
-  # PINNED to the v0.5.1-supplychain-wave5-audit-fixes release.
+  # PINNED to the v0.6.0-supplychain-wave6 release.
   #
   # The url points at a single release asset rather than the source
   # tarball, because the installer is a single executable shell script
@@ -16,18 +16,25 @@ class PersonalJarvisInstaller < Formula
   # package manager's signing chain is only meaningful if the pinned
   # artifact is immutable).
   #
-  # Wave-5 bump (audit fixes, 2026-05-27):
-  # - Tag-binding cross-check: stage [7/13] now extracts the
-  #   @refs/tags/<X> suffix from the cosign SAN cert and refuses if
-  #   it does not match \$TAG (closes downgrade-replay).
-  # - New axis E (payload-commit pin): install-verify fetches +
-  #   verifies payload-commit.txt (the tagged commit SHA), then
-  #   install.sh checks out --detach to that SHA before running.
-  #   Closes the cloned-main-is-unsigned gap.
-  # - in-toto layout renamed layout-content-anchor.json with honest
-  #   _type=content-anchor; docs no longer overclaim in-toto signing.
-  # - Verifier now spans 14 stages plus axis E; SHA256 above is taken
-  #   verbatim from the v0.5.1 release's checksums.txt.
+  # Wave-6 bump (pip hash-pin + audit, 2026-05-27):
+  # - New CI gate `pip-audit -r requirements.txt --strict` runs before
+  #   any signing work — a CVE in any transitive Python dep blocks
+  #   the release at the earliest possible point.
+  # - `requirements.txt` is now a `pip-compile --generate-hashes`
+  #   lockfile (~3200 `--hash=sha256:` lines across ~170 packages)
+  #   signed under all five trust axes alongside `install.sh`.
+  # - `install-verify.sh` runs a new Wave-6 stage that fetches +
+  #   authenticates `requirements.txt` against the same axes
+  #   (Fulcio keyless, offline Ed25519, ML-DSA-65) before
+  #   `installer.py` runs `pip install --require-hashes` from it.
+  # - `verify-wave6.sh` at the repo root is the goal-terminal proof:
+  #   clean venv ⇒ hash-pinned install ⇒ import jarvis ⇒ pip-audit
+  #   --strict ⇒ prints exactly `WAVE6_OK` on success.
+  # - Threat model docs/supply-chain/threat-model.md §11 documents
+  #   the new pillar plus the residual gaps (Linux-only lockfile,
+  #   unhashed pyproject.toml, unhashed pip-audit).
+  # - SHA256 above is taken verbatim from the v0.6.0 release's
+  #   checksums.txt.
 
   def install
     # The downloaded file is a single executable shell script (not an
@@ -39,12 +46,13 @@ class PersonalJarvisInstaller < Formula
   end
 
   test do
-    # The installer is a 14-stage verifier that fails closed; running it
-    # bare would try to download cosign + the release bundle + the PQ
-    # ML-DSA-65 verification material. For a `brew test` smoke check we
+    # The installer is a 14-stage verifier (plus axis E + Wave 6) that
+    # fails closed; running it bare would try to download cosign + the
+    # release bundle + the PQ ML-DSA-65 verification material + the
+    # hash-pinned dependency lockfile. For a `brew test` smoke check we
     # only assert that the script is present, is the right verifier (not
-    # some random shell file), and has a recognisable banner. This is the
-    # strongest meaningful test we can run without network + signing
+    # some random shell file), and has a recognisable banner. This is
+    # the strongest meaningful test we can run without network + signing
     # material in the test sandbox.
     installer = bin/"personal-jarvis-installer"
     assert_path_exists installer
@@ -53,5 +61,8 @@ class PersonalJarvisInstaller < Formula
     assert_match "Personal Jarvis", contents
     assert_match "supply-chain", contents
     assert_match "EXPECTED_REPO=\"personal-jarvis/personal-jarvis\"", contents
+    # Wave 6: confirm the verifier carries the new lockfile-authentication stage.
+    assert_match "Wave 6", contents
+    assert_match "requirements.txt", contents
   end
 end
