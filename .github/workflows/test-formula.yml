@@ -1,0 +1,63 @@
+name: test-formula
+
+# Runs `brew audit --strict` against every Formula in this tap on every
+# push and pull request. A Formula that fails audit must not land on main —
+# users would see the failure at `brew install` time, which defeats the
+# Wave 4 trust model (the tap is supposed to be the *clean* install path).
+#
+# The setup-homebrew action is pinned to a 40-character commit SHA, not a
+# tag/branch, so a compromise of the Homebrew/actions repo cannot
+# retroactively change what this workflow runs. SA-W4-5 (Wave 4 integrator)
+# bumps the SHA when reviewing each release.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Formula/**"
+      - ".github/workflows/test-formula.yml"
+  pull_request:
+    paths:
+      - "Formula/**"
+      - ".github/workflows/test-formula.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: brew audit --strict
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout tap
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@6eaeff80e7e5c43087c0e5eb5aa82120399e9c91
+
+      - name: Audit Formula (strict)
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          formulae=(Formula/*.rb)
+          if [ ${#formulae[@]} -eq 0 ]; then
+            echo "::error::No Formula files found under Formula/"
+            exit 1
+          fi
+          for f in "${formulae[@]}"; do
+            echo "::group::brew audit --strict --online $f"
+            brew audit --strict --online "$f"
+            echo "::endgroup::"
+          done
+
+      - name: Style check (brew style)
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for f in Formula/*.rb; do
+            echo "::group::brew style $f"
+            brew style "$f"
+            echo "::endgroup::"
+          done
