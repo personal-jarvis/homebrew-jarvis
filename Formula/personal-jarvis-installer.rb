@@ -3,19 +3,27 @@ class PersonalJarvisInstaller < Formula
   homepage "https://github.com/personal-jarvis/personal-jarvis"
   license "MIT"
 
-  # PINNED to the v0.4.0-supplychain-wave3 release.
+  # PINNED to the v0.5.0-supplychain-wave4 release.
   #
-  # IMPORTANT for SA-5 (Wave 4 integrator): when v0.5.0-wave4 lands, bump
-  # `url`, `version`, and `sha256` to the new release. The url SHOULD point
-  # at a single release asset rather than the source tarball, because the
-  # installer is a single executable shell script that we re-publish per
-  # release with cosign + offline + SLSA signatures alongside it. The
-  # Homebrew tap MUST never pull from `master`/`HEAD` — that defeats the
-  # whole point of Wave 4 (the package manager's signing chain is only
-  # meaningful if the pinned artifact is immutable).
-  url "https://github.com/personal-jarvis/personal-jarvis/releases/download/v0.4.0-supplychain-wave3/install-verify.sh"
-  version "0.4.0-supplychain-wave3"
-  sha256 "d81582569a828b99589b549a8d7544029dbd15a823fa5bba1d5abbc369bfed02"
+  # The url points at a single release asset rather than the source
+  # tarball, because the installer is a single executable shell script
+  # that we re-publish per release with cosign + offline + SLSA L3 +
+  # ML-DSA-65 signatures alongside it. The Homebrew tap MUST never pull
+  # from `master`/`HEAD` — that defeats the whole point of Wave 4 (the
+  # package manager's signing chain is only meaningful if the pinned
+  # artifact is immutable).
+  #
+  # Wave-4 bump (SA-5, 2026-05-27):
+  # - Verifier is now 14 stages (0/13..13/13); stages 12-13 carry the
+  #   ML-DSA-65 PQ axis. Stage 13/13 cleanly skips when the host's
+  #   OpenSSL is older than 3.5 (transition mode) with an explicit
+  #   warning rather than a hard fail.
+  # - SHA256 is computed over the v0.5 install-verify.sh source at the
+  #   squash-merge commit on `main`; the signing workflow publishes
+  #   byte-identical content to the release asset.
+  url "https://github.com/personal-jarvis/personal-jarvis/releases/download/v0.5.0-supplychain-wave4/install-verify.sh"
+  version "0.5.0-supplychain-wave4"
+  sha256 "c90949ef36d3b64e55415ea9ca41d7502e255f73bd0a36ddb791a67fba38f8f6"
 
   def install
     # The downloaded file is a single executable shell script (not an
@@ -27,12 +35,13 @@ class PersonalJarvisInstaller < Formula
   end
 
   test do
-    # The installer is a 12-stage verifier that fails closed; running it
-    # bare would try to download cosign + the release bundle. For a `brew
-    # test` smoke check we only assert that the script is present, is the
-    # right verifier (not some random shell file), and has a recognisable
-    # banner. This is the strongest meaningful test we can run without
-    # network + signing material in the test sandbox.
+    # The installer is a 14-stage verifier that fails closed; running it
+    # bare would try to download cosign + the release bundle + the PQ
+    # ML-DSA-65 verification material. For a `brew test` smoke check we
+    # only assert that the script is present, is the right verifier (not
+    # some random shell file), and has a recognisable banner. This is the
+    # strongest meaningful test we can run without network + signing
+    # material in the test sandbox.
     installer = "#{bin}/personal-jarvis-installer"
     assert_predicate Pathname.new(installer), :exist?
     assert_predicate Pathname.new(installer), :executable?
