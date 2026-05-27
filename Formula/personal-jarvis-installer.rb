@@ -23,7 +23,7 @@ class PersonalJarvisInstaller < Formula
   #   byte-identical content to the release asset.
   url "https://github.com/personal-jarvis/personal-jarvis/releases/download/v0.5.0-supplychain-wave4/install-verify.sh"
   version "0.5.0-supplychain-wave4"
-  sha256 "c90949ef36d3b64e55415ea9ca41d7502e255f73bd0a36ddb791a67fba38f8f6"
+  sha256 "2cf33793365d71fcf21ab800708fde916659ce6c8fbdbf1ddc658abbfae342dc"
 
   def install
     # The downloaded file is a single executable shell script (not an
