@@ -1,6 +1,9 @@
 class PersonalJarvisInstaller < Formula
-  desc "Supply-chain hardened installer for Personal Jarvis (cosign + offline Ed25519 + SLSA L3 + in-toto)"
+  desc "Supply-chain hardened installer for Personal Jarvis (4 trust axes)"
   homepage "https://github.com/personal-jarvis/personal-jarvis"
+  url "https://github.com/personal-jarvis/personal-jarvis/releases/download/v0.5.0-supplychain-wave4/install-verify.sh"
+  version "0.5.0-supplychain-wave4"
+  sha256 "742746d9073382195728d730c31cd72aaf7316fdc81dbac9ed6f77eeb9376c52"
   license "MIT"
 
   # PINNED to the v0.5.0-supplychain-wave4 release.
@@ -21,9 +24,6 @@ class PersonalJarvisInstaller < Formula
   # - SHA256 is computed over the v0.5 install-verify.sh source at the
   #   squash-merge commit on `main`; the signing workflow publishes
   #   byte-identical content to the release asset.
-  url "https://github.com/personal-jarvis/personal-jarvis/releases/download/v0.5.0-supplychain-wave4/install-verify.sh"
-  version "0.5.0-supplychain-wave4"
-  sha256 "742746d9073382195728d730c31cd72aaf7316fdc81dbac9ed6f77eeb9376c52"
 
   def install
     # The downloaded file is a single executable shell script (not an
@@ -42,9 +42,9 @@ class PersonalJarvisInstaller < Formula
     # some random shell file), and has a recognisable banner. This is the
     # strongest meaningful test we can run without network + signing
     # material in the test sandbox.
-    installer = "#{bin}/personal-jarvis-installer"
-    assert_predicate Pathname.new(installer), :exist?
-    assert_predicate Pathname.new(installer), :executable?
+    installer = bin/"personal-jarvis-installer"
+    assert_path_exists installer
+    assert_predicate installer, :executable?
     contents = File.read(installer)
     assert_match "Personal Jarvis", contents
     assert_match "supply-chain", contents
