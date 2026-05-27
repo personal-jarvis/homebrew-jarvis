@@ -37,20 +37,27 @@ jobs:
       - name: Set up Homebrew
         uses: Homebrew/actions/setup-homebrew@6eaeff80e7e5c43087c0e5eb5aa82120399e9c91
 
-      - name: Tap self (so `brew audit NAME` resolves the local checkout)
+      - name: Stage tap inside Homebrew taps tree (so `brew audit NAME` resolves)
+        # NOTE (SA-5, 2026-05-27): `brew audit <path>` is disabled in
+        # Homebrew 4.x ("Use brew audit [name ...] instead"). We cannot
+        # simply `brew tap personal-jarvis/jarvis <local-path>` because
+        # setup-homebrew has already implicitly tapped from the public
+        # GitHub URL — `brew tap` then refuses with "remote mismatch".
+        # Instead, copy the workspace into the canonical taps location
+        # so brew already knows the tap is `personal-jarvis/jarvis` and
+        # `brew audit personal-jarvis/jarvis/<name>` resolves to the
+        # files we just checked out.
         run: |
           set -euo pipefail
-          # Use `brew tap personal-jarvis/jarvis <local-path>` so audit/style
-          # commands can address the formula by name (path arg is deprecated
-          # in Homebrew 4.x — see SA-5 fix-forward note below).
-          brew tap personal-jarvis/jarvis "${{ github.workspace }}"
+          TAP_DIR="$(brew --repository)/Library/Taps/personal-jarvis/homebrew-jarvis"
+          mkdir -p "$(dirname "$TAP_DIR")"
+          if [ -d "$TAP_DIR" ]; then
+            rm -rf "$TAP_DIR"
+          fi
+          cp -R "${{ github.workspace }}" "$TAP_DIR"
+          ls -la "$TAP_DIR/Formula"
 
       - name: Audit Formula (strict)
-        # NOTE (SA-5, 2026-05-27): `brew audit <path>` was deprecated in
-        # Homebrew 4.x and now errors with "Calling brew audit [path ...]
-        # is disabled! Use brew audit [name ...] instead." We tap the
-        # local checkout in the previous step, then audit by tap-qualified
-        # formula name.
         run: |
           set -euo pipefail
           shopt -s nullglob
